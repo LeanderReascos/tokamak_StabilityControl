@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import signal
 
-class SpaceState:
+class StateSpace:
     def __init__(self,A,B,C,D):
         self.__A = A
         self.__B = B
