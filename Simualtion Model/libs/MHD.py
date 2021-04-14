@@ -1,5 +1,7 @@
 import numpy as np
 import magnetic_fields as mf
+import funtions_and_constants as func
+from functions import CONSTANTS as CONST
 
 class Plasma:
     '''
@@ -18,8 +20,8 @@ class Plasma:
                     self.__XMIN, self.__XMAX, self.__YMIN, self.__YMAX = [float(v) for v in value.split(',')] # Dimentions of the box
                     self.__DX = (self.__XMAX-self.__XMIN)/(self.__NX-1)
                     self.__DY = (self.__YMAX-self.__YMIN)/(self.__NY-1)
-                    X = np.linspace(self.__XMIN,self.__XMAX,self.__NX)
-                    Z = np.linspace(self.__YMIN,self.__YMAX,self.__NY)
+                    X = np.linspace(self.__XMIN-self.__DX,self.__XMAX+self.__DX,self.__NX+2)
+                    Z = np.linspace(self.__YMIN-self.__DY,self.__YMAX+self.__DY,self.__NY+2)
                     self.__POS = np.array([(x,0,z) for z in Z for x in X])
                 elif tag == 'Temporal':
                     self.__DT, self.__TF = [float(v) for v in value.split(',')]
@@ -35,7 +37,13 @@ class Plasma:
 
     def calc_Force(self):
         #Magnetic Component
-        Bs =  self.__MAGNETIC_SOURCES.get_sources().getB(POS).reshape(self.__NY,self.__NX,3)
-        Bx,Bz,By = Bs[:,;,0],Bs[:,;,1],Bs[:,;,2]
-        
-        
+        B =  self.__MAGNETIC_SOURCES.get_sources().getB(POS).reshape(self.__NY+2,self.__NX+2,3)
+        Bz = -np.copy(B[:,:,1])
+        B[:,:,1], B[:,:,2] = B[:,:,2], Bz
+        J = func.CURL(B)/CONST.MU_0
+        F_B = np.cross(J,B) 
+        #Pressure Component
+        GRAD_P = np.empty(F_B.shape,float)
+        GRAD_P[:,:,0], GRAD_P[:,:,1] = np.gradient(self.__P)
+        GRAD_P[:,:,2] = np.zeros((self.__NY,self.__NX))
+        self.__F = F_B - GRAD_P
