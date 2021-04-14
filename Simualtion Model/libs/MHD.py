@@ -1,7 +1,8 @@
 import numpy as np
 import magnetic_fields as mf
-import funtions_and_constants as func
-from functions import CONSTANTS as CONST
+from solver_and_constants import TheSolver,CONSTANTS
+
+CONST = CONSTANTS()
 
 class Plasma(TheSolver):
     '''
@@ -41,7 +42,7 @@ class Plasma(TheSolver):
         B =  self.__MAGNETIC_SOURCES.get_sources().getB(POS).reshape(self.__NY+2,self.__NX+2,3)
         Bz = -np.copy(B[:,:,1])
         B[:,:,1], B[:,:,2] = B[:,:,2], Bz
-        J = func.CURL(B)/CONST.MU_0
+        J = self.curl(B)/CONST.MU_0
         F_B = np.cross(J,B) 
         #Pressure Component
         GRAD_P = np.empty(F_B.shape,float)
@@ -77,5 +78,4 @@ class Plasma(TheSolver):
         denom = 1.0/(4 - 2*np.cos(2*np.pi*kx*self.__DX) - 2*np.cos(2*np.pi*ky*self.__DY))
         denom[0, 0] = 0
         p[1:-1,1:-1] = np.real_if_close(np.fft.ifft2 (-srcTrans * denom * self.__DX * self.__DY))
-        return 
-  
+        return p
