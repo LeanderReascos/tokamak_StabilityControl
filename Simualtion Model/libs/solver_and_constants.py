@@ -44,13 +44,15 @@ class TheSolver:
              + coeff2/self.__DY**2*( f[1:-1,2:] - 2* f[1:-1,1:-1] + f[1:-1,:-2])
         return g
 
-    def CURL(A):
+    def curl(A):
         ''' CULR of a tensor A that doesn't change in zz axis '''
         Ax,Ay,Az = A[:,:,0],A[:,:,1],A[:,:,2]
-        rot_x = central_diff_1st_dY(Az, 1)                              # dAz/dy - dAy/dz (0)  
-        rot_y = central_diff_1st_dX(Az, 1)                              # dAx/dz (0) - dAz/dx 
-        rot_z = central_diff_1st_dX(Ay, 1) - central_diff_1st_dY(Ax, 1) # dAy/dx - dAx/dy 
+        rot_x = self.central_diff_1st_dY(Az, 1)                                   # dAz/dy - dAy/dz (0)  
+        rot_y = self.central_diff_1st_dX(Az, 1)                                   # dAx/dz (0) - dAz/dx 
+        rot_z = self.central_diff_1st_dX(Ay, 1) - self.central_diff_1st_dY(Ax, 1) # dAy/dx - dAx/dy 
         ni,nj,_ = A.shape()
         ROT = np.empty((ni-2,nj-2,3),float)
         ROT[:,:,0], ROT[:,:,1], ROT[:,:,2] = rot_x, rot_y, rot_z
     return ROT
+        
+    
