@@ -60,8 +60,7 @@ class Plasma(TheSolver):
                   + self.__DX**2 * ( f [1:-1,2:] + f [1:-1,:-2] ) ) )
                     / (1 + (2*diff_coeff * self.__DT) / ( self.DX**2 * self.__DY**2)
                   * ( self.__DY**2 + self.__DX**2)))
-    
-    
+      
     def relax_pressure_poisson( self , p , src ) :
         """ Resolve a equação de Poisson para campo de pressão 2D por diferenciação central em ambas as dimensões.
             Resolve a equação de Laplace para um campo de pressão 2D quando src = 0"""
@@ -78,4 +77,5 @@ class Plasma(TheSolver):
         denom = 1.0/(4 - 2*np.cos(2*np.pi*kx*self.__DX) - 2*np.cos(2*np.pi*ky*self.__DY))
         denom[0, 0] = 0
         p[1:-1,1:-1] = np.real_if_close(np.fft.ifft2 (-srcTrans * denom * self.__DX * self.__DY))
-        return p
+        return 
+  
