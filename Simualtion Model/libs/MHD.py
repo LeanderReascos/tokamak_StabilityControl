@@ -50,32 +50,32 @@ class Plasma(TheSolver):
         self.__F = F_B - GRAD_P
 
     def diffuse_explicit( self , f ) :
-        """viscosidade assumidamente 0, calcula a difusao de um campo 3d por explicita diferenciação central"""
-        return self.__DT*self.central_diff_2nd_3d( f,self.__NU,self.__NU, self.__NU)
+        """viscosidade assumidamente 0, calcula a difusao de um campo por explicita diferenciação central"""
+        return self.__DT*self.central_diff_2nd( f,self.__NU,self.__NU, self.__NU)
     
     def diffuse_implicit ( self , f0 , f , diff_coeff ) :
-        """Performs diffusion of a 2D field implicitly ; diff_coef (NU or ETA i s assumed to be constant . """
+        """Performs diffusion of a field implicitly ; diff_coef (NU or ETA is assumed to be constant . """
         return ( ( f0[1:-1,1:-1] + ( diff_coeff * self.__DT) /( self.__DX**2 * self.__DY**2) 
-                  * ( self.__DY**2 * ( f [ 2 : , 1:-1] + f [ :-2 , 1:-1] )
-                  + self.__DX**2 * ( f [1:-1 , 2 : ] + f [1:-1 , : -2] ) ) )
+                  * ( self.__DY**2 * ( f [2:,1:-1] + f [:-2,1:-1] )
+                  + self.__DX**2 * ( f [1:-1,2:] + f [1:-1,:-2] ) ) )
                     / (1 + (2*diff_coeff * self.__DT) / ( self.DX**2 * self.__DY**2)
                   * ( self.__DY**2 + self.__DX**2)))
-    
+      
     def relax_pressure_poisson( self , p , src ) :
-        """ Resolve a equação de Poisson para campo de pressão 3D por diferenciação central em ambas as dimensões.
-            Resolve a equação de Laplace para um campo de pressão 3D quando src = 0"""
-        p[1:-1,1:-1,1:-1] = ((self.__DY**2*self.__DZ**2*(p[2:,1:-1,1:-1] + p[:-2,1:-1,1:-1] )+ 
-                              self.__DX**2*self.__DZ**2*(p[1:-1,2:,1:-1] + p[1:-1,:-2,1:-1] ) + 
-                              self.__DX**2*self.__DY**2*(p[1:-1,1:-1,2:] + p[1:-1,1:-1,:-2] )
-                               - self.__DX**2 * self.DY**2*self.__DZ**2 * src[1: -1 ,1: -1,1: -1] )/ ( 2*( self.__DX**2 + self.__DY**2+ self.__DZ**2) ) )
+        """ Resolve a equação de Poisson para campo de pressão 2D por diferenciação central em ambas as dimensões.
+            Resolve a equação de Laplace para um campo de pressão 2D quando src = 0"""
+        p[1:-1,1:-1] = ((self.__DY**2*(p[2:,1:-1] + p[:-2,1:-1] )+ 
+                              self.__DX**2*(p[1:-1,2:] + p[1:-1,:-2] ) + 
+                              - self.__DX**2 * self.DY**2*src[1: -1 ,1: -1] )/ ( 2*( self.__DX**2 + self.__DY**2) ) )
         return p
     
-    def transform_pressure_poisson ( self , p , src ) :
-        """ Resolve a equação de Poisson para campos de pressão 3D pela Fast Fourier Trasnform (fft).
-            Isto resolve a equação de Laplace  para campos de pressão 3D quando src = 0"""
-        srcTrans = np.fft.fftn( src [1: -1 ,1: -1, 1:-1] )
-        kx, ky, kz = np.meshgrid (np.fft.fftfreq(self.__NX-2, d = self.__DX) , np.fft.fftfreq(self.__NY-2, d = self.__DY) , np.fft.fftfreq(self.__NZ-2, d = self.__DZ) )
-        denom = 1.0/(4 - 2*np.cos(2*np.pi*kx*self.__DX) - 2*np.cos(2*np.pi*ky*self.__DY) - 2*np.cos(2*np.pi*kz*self.__DZ))
-        denom[0, 0 , 0] = 0
-        p[1: -1 ,1: -1 ,1: -1] = np.real_if_close(np.fft.ifftn (-srcTrans * denom * self.__DX * self.__DY) * self.__DZ) )
-        return p
+    def transform_pressure_poisson(self, p, src):
+        """ Resolve a equação de Poisson para campos de pressão 2D pela Fast Fourier Transform (fft).
+            Isto resolve a equação de Laplace  para campos de pressão 2D quando src = 0"""
+        srcTrans = np.fft.fft2( src [1:-1 ,1: -1] )
+        kx, ky = np.meshgrid (np.fft.fftfreq(self.__NX-2, d = self.__DX) , np.fft.fftfreq(self.__NY-2, d = self.__DY))
+        denom = 1.0/(4 - 2*np.cos(2*np.pi*kx*self.__DX) - 2*np.cos(2*np.pi*ky*self.__DY))
+        denom[0, 0] = 0
+        p[1:-1,1:-1] = np.real_if_close(np.fft.ifft2 (-srcTrans * denom * self.__DX * self.__DY))
+        return 
+  
