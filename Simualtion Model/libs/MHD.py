@@ -49,19 +49,99 @@ class Plasma(TheSolver):
         GRAD_P[:,:,0], GRAD_P[:,:,1] = np.gradient(self.__P)
         GRAD_P[:,:,2] = np.zeros((self.__NY,self.__NX))
         self.__F = F_B - GRAD_P
+        
+    def linear_advect_explicit ( self , f ) :
+        """Calcula a advection linear de um campo 2D por diferenciação explícita para trás"""
+        return self.__DT*self.back_diff1st ( f, self.__C, self.__C)
+
+    def linear_advect_implicit ( self , f , XX,YY) :
+        """Calcula a advection linear de um campo 2D implicitamente mantendo todos os valores limitados pelo domínio, por backtracking centrado na célula e aplicando pesos necessários"""
+        x = XX - ( self.__DT/self.__DX * self.__C)
+        y = YY - ( self.__DT/ self.__DY * self.__C)
+        x = np.where ( x < 0.5 , 0.5 , x )
+        y = np.where ( y < 0.5 , 0.5 , y )
+        x = np.where ( x > ( self.__NX-2) + 0.5 ,( self.__NX-2) + 0.5 , x )
+        y = np . where ( y > ( self.__NY-2) + 0.5 ,( self.__NY-2) + 0.5 , y )
+        i0 = x.astype(int) ; j0 = y.astype(int)
+        i1 = i0 + 1 ; j1 = j0 + 1
+        s1 = x - i0 ; t1 = y - j0
+        s0 = 1 - s1 ; t0 = 1 - t1
+        return ( s0*(t0*f[i0,j0] + t1*f[i0,j1])+ s1*(t0*f[i1,j0] + t1*f[i1,j1]))
+
+
+    def linear_advect_implicit_periodic( self, f, XX ,YY) :
+        """Calcula advection linear de um campo 2D (f) implicitamente com limites periódicos por backtracking centrado na célula aplicando os pesos necessários"""
+        x = XX - ( self.__DT/ self.__DX * C)
+        y = YY - ( self.__DT/ self.__DY * C)
+        x = x % ( self.__NX - 2)
+        y = y % ( self.__NY - 2)
+        i0 = x.astype(int) ; j0 = y.astype(int)
+        i1 = i0 + 1 ; j1 = j0 + 1
+        s1 = x - i0 ; t1 = y - j0
+        s0 = 1 - s1 ; t0 = 1 - t1
+        return ( s0 * ( t0 * f [i0, j0] + t1 * f[i0,j1]) + s1*(t0*f[i1,j0] + t1*f[i1,j1]))
+
+
+    def non_linear_advect_explicit( self, f, fx, fy) :
+        """Calcula a advection não linear de um campo 2D (f) por um campo vetorial 2D (fx, fy) por explicito backward diferenciação"""
+        return self.__DT*self.back_diff1st( f, fx[1:-1,1:-1], fy[1:-1,1:-1])
+
+
+
+    def non_linear_advect_implicit ( self, f, fx, fy , XX,YY) :
+        """Calcula advection nao linear de um campo 2D (f) por um campo vectorial (fx, fy), mantendo os valores limitados no domínio, através de backtracking centrado na célula e aplicando pesos necessários"""
+        x = XX - ( self.__DT/ self.__DX * fx[1:-1,1:-1] )
+        y = YY - ( self.__DT/ self.__DY * fy[1:-1,1:-1] )
+        x = np.where ( x < 0.5 , 0.5 , x )
+        y = np.where ( y < 0 . 5 , 0 . 5 , y )
+        x = np.where ( x > ( self.__NX-2) + 0 . 5 ,(self.__NX-2) + 0.5 , x )
+        y = np.where ( y > ( self.NY-2) + 0.5 ,( self.__NY-2) + 0.5 , y )
+        i0 = x.astype(int); j0 = y.astype(int)
+        i1 = i0 + 1; j1 = j0 + 1
+        s1 = x - i0 ; t1 = y - j0
+        s0 = 1 - s1 ; t0 = 1 - t1
+        return ( s0 * ( t0 * f[i0,j0] + t1 * f[i0,j1])+ s1 * (t0*f[i1,j0] + t1*f[i1,j1]))
+
+
+    def non_linear_advect_implicit_periodic ( self, f, fx, fy,XX,YY) :
+        """Advection de um campo 2D (fx, fy) de qualquer componente de um campo 2D (f) com limites periódicos através de backtracking centrada na célula e aplicando pesos necessários""""
+        x = XX - ( self.__DT/ self.__DX * fx [1:-1 ,1:-1] )
+        y = YY - ( self.__DT/ self.__DY * fy [1:-1 ,1:-1] )
+        x = x % ( self.__NX - 2)
+        y = y % ( self.__NY - 2)
+        i0 = x.astype(int); j0 = y.astype(int)
+        i1 = i0 + 1; j1 = j0 + 1
+        s1 = x - i0 ; t1 = y - j0
+        s0 = 1 - s1 ; t0 = 1 - t1
+        return ( s0 * ( t0 * f[i0,j0] + t1 * f[i0,j1]) + s1 * ( t0 * f[i1,j0] + t1 * f[i1,j1]))
+
 
     def diffuse_explicit( self , f ) :
         """viscosidade assumidamente 0, calcula a difusao de um campo por explicita diferenciação central"""
         return self.__DT*self.central_diff_2nd( f,self.__NU,self.__NU, self.__NU)
-    
-    def diffuse_implicit ( self , f0 , f , diff_coeff ) :
-        """Performs diffusion of a field implicitly ; diff_coef (NU or ETA is assumed to be constant . """
+
+    def diffuse_implicit ( self , f0, f, diff_coeff ) :
+        """Calcula difusão de um campo implicitamente;diff_coef (NU or ETA is assumed to be constant."""
         return ( ( f0[1:-1,1:-1] + ( diff_coeff * self.__DT) /( self.__DX**2 * self.__DY**2) 
                   * ( self.__DY**2 * ( f [2:,1:-1] + f [:-2,1:-1] )
                   + self.__DX**2 * ( f [1:-1,2:] + f [1:-1,:-2] ) ) )
                     / (1 + (2*diff_coeff * self.__DT) / ( self.DX**2 * self.__DY**2)
                   * ( self.__DY**2 + self.__DX**2)))
-      
+    
+    
+    def apply_pressure_dX(sel, p, c):
+        return self.__DT*self.central_diff_1st_dX(p,c)
+
+    def apply_pressure_dY(sel, p, c):
+        return self.__DT*self.central_diff_1st_dY(p,c)
+
+    def apply_force(self, g):
+        return self.__DT*g[1:-1,1:-1]
+
+    def calc_source(self, u, v):
+        return (self.central_diff_1st_dX(u,self.___RHO/self.__DT + self.central_diff_1st_dY(v,self.__RHO/self.__DT)))
+    
+    
     def relax_pressure_poisson( self , p , src ) :
         """ Resolve a equação de Poisson para campo de pressão 2D por diferenciação central em ambas as dimensões.
             Resolve a equação de Laplace para um campo de pressão 2D quando src = 0"""
@@ -69,7 +149,7 @@ class Plasma(TheSolver):
                               self.__DX**2*(p[1:-1,2:] + p[1:-1,:-2] ) + 
                               - self.__DX**2 * self.DY**2*src[1: -1 ,1: -1] )/ ( 2*( self.__DX**2 + self.__DY**2) ) )
         return p
-    
+
     def transform_pressure_poisson(self, p, src):
         """ Resolve a equação de Poisson para campos de pressão 2D pela Fast Fourier Transform (fft).
             Isto resolve a equação de Laplace  para campos de pressão 2D quando src = 0"""
