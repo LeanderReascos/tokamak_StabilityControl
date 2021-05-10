@@ -127,7 +127,21 @@ class Plasma(TheSolver):
                   + self.__DX**2 * ( f [1:-1,2:] + f [1:-1,:-2] ) ) )
                     / (1 + (2*diff_coeff * self.__DT) / ( self.DX**2 * self.__DY**2)
                   * ( self.__DY**2 + self.__DX**2)))
+    
+    
+    def apply_pressure_dX(sel, p, c):
+        return self.__DT*self.central_diff_1st_dX(p,c)
 
+    def apply_pressure_dY(sel, p, c):
+        return self.__DT*self.central_diff_1st_dY(p,c)
+
+    def apply_force(self, g):
+        return self.__DT*g[1:-1,1:-1]
+
+    def calc_source(self, u, v):
+        return (self.central_diff_1st_dX(u,self.___RHO/self.__DT + self.central_diff_1st_dY(v,self.__RHO/self.__DT)))
+    
+    
     def relax_pressure_poisson( self , p , src ) :
         """ Resolve a equação de Poisson para campo de pressão 2D por diferenciação central em ambas as dimensões.
             Resolve a equação de Laplace para um campo de pressão 2D quando src = 0"""
