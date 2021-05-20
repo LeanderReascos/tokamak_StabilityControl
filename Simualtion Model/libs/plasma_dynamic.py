@@ -8,11 +8,12 @@ n = 1e24
 
 
 def loretntz_force(r,B,M,I):
-    '''Calculates f associated with the velocities. Receives:
+    '''Calculates Lorentz Force. Receives:
+            - r = p,v
+            - p = [x,y,z]
             - v = [vx,vy,vz]
             - B = [Bx,By,Bz]
             - M = plasma mass
-            - n = index to be calculated (0->vx, 1->vy, 2->vz)
     '''
     p,v = r
     dr = v
@@ -20,13 +21,17 @@ def loretntz_force(r,B,M,I):
     return np.array([dr,dv],float)
 
 def Runge_Kutta(f,r0,h,*args):
-    '''Função generica Runge Kutta ordem 4, recebe uma função f, um vetor r0 = [(x,y,z),(vx,vy,vz)]'''
+    '''4th order Runge Kutta. Recives:
+            - r0 = [(x,y,z),(vx,vy,vz)]
+            - h: temporal step
+        Return: [dp,dv]
+    '''
     r = np.array(r0)
     k0 = h*f(r,*args)
     k1 = h*f(r+k0/2,*args)
     k2 = h*f(r+k1/2,*args)
     k3 = h*f(r+k2,*args)
-    return r+1/6*(k0+2*k1+2*k2+k3)
+    return 1/6*(k0+2*k1+2*k2+k3)
 
 
 class Shape:
