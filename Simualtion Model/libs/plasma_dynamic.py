@@ -1,4 +1,3 @@
-from numpy.lib.function_base import meshgrid
 import magnetic_fields as mg
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
@@ -109,6 +108,5 @@ class Plasma(Shape):
         
         
         
-
 
 
