@@ -6,28 +6,26 @@ import numpy as np
 e = 1.60217662e-19
 n = 1e24
 
-def f_v(v,lixo,B,M,I):
-    """Calculates f associated with the velocities. Receives:
+
+def loretntz_force(r,B,M,I):
+    '''Calculates f associated with the velocities. Receives:
             - v = [vx,vy,vz]
             - B = [Bx,By,Bz]
             - M = plasma mass
             - n = index to be calculated (0->vx, 1->vy, 2->vz)
-    """
-    #print("velocidade ",v)
-    #print("campo magnetico ",B)
-    #print("cross product ",np.cross(v,B))
-    
-    return I*np.cross(v,B)/M
+    '''
+    p,v = r
+    dr = v
+    dv = I*np.cross(v,B)/M
+    return np.array([dr,dv],float)
 
-def f_r(r,v,B,M,I):
-    return v
-
-def Runge_Kutta(f,r,h,v,B,I,M):
-    '''Função generica Runge Kutta ordem 4, recebe uma função f, um vetor r = (vx, vy, vz) ou (x,y,z), o instante de tempo inicial, t0,         e final, tf e o passo h'''
-    k0 = h*f(r,v,B,M,I)
-    k1 = h*f(r+k0/2,v,B,M,I)
-    k2 = h*f(r+k1/2,v,B,M,I)
-    k3 = h*f(r+k2,v,B,M,I) 
+def Runge_Kutta(f,r0,h,*args):
+    '''Função generica Runge Kutta ordem 4, recebe uma função f, um vetor r0 = [(x,y,z),(vx,vy,vz)]'''
+    r = np.array(r0)
+    k0 = h*f(r,*args)
+    k1 = h*f(r+k0/2,*args)
+    k2 = h*f(r+k1/2,*args)
+    k3 = h*f(r+k2,*args)
     return r+1/6*(k0+2*k1+2*k2+k3)
 
 
@@ -73,10 +71,9 @@ class Plasma(Shape):
         vy = self.__J/(n*e)
         self.__v = [vx,vy,vz]
         self.__rho = rho
-        
-    def apply_Force(self,B):
-        """Temos a equacao diferencial mx'' = (IxB)"""
     
+    def apply_Force(self,B,h):
+        '''Temos a equacao diferencial mx'' = (I x B)'''
         #calculate the new center position
         #assuming that:
         #    A is the area of the plasma
@@ -84,29 +81,13 @@ class Plasma(Shape):
         #    rho is the mass density
         #    v as [vx,vy,vz] with the plasma velocities 
         #    r as [x,y,z] with the plasma mass center localization
-        A = self.get_surface()
-        M = self.__rho*A
-        I = n*A*e
+        M = self.__rho*self.get_surface()
         i,j  = self.get_center(vector=False)
         Br = B[i,j]
-        #print(Br)
-        h = 0.001#s
-        
-        
         x,z = self.get_center()
-        r_real = np.array([x,0,z])
-        
-        #print(Br)
+        r = [[x,0,z],self.__v]
+        deltaV,deltaR = Runge_Kutta(loretntz_force,r,h,Br,M,self.__I)
         #update plasma velocity
-        self.__v += Runge_Kutta(f_v,self.__v,h,self.__v,Br,I,M)
-        
-        
+        self.__v += deltaV
         #update plasma mass center position
-        delta_r = Runge_Kutta(f_r,r_real,h,self.__v,Br,I,M)
-        
-        self.set_center(delta_r)
-        
-        
-        
-
-
+        self.set_center(deltaR)
