@@ -1,4 +1,8 @@
+from plasma_dynamic import Plasma
 import magnetic_fields as  mf
+import numpy as np
+import matplotlib.pyplot as plt
+import sys
 
 def read_file(filename_data):
     radius=[]
@@ -8,12 +12,30 @@ def read_file(filename_data):
     inductance=[]
     with open(filename_data,'r') as f:
         line = f.readline()
+        PF = False
+        PI = False
+        CS = False
         while line:
-            var,valor=line.split(':')
-            valor,_ = valor.split('\n')
+            try:
+                var,valor=line.split(':')
+                valor,_ = valor.split('\n')
+            except:
+                var = line.split('\n')[:-1]
             if var=='Toroid':
                 N,I = [float(val) for val in valor.split(',')]
             if var=="PF":
+                PF = True
+                PI = False
+                CS = False
+            if var=="PLASMA_ITER":
+                PF = False
+                PI = True
+                CS = False
+            if var=='CENTRAL_SOLENOID_ITER':
+                PF = False
+                PI = False
+                CS = True
+            if PF:
                 if var=="radius":
                     radius.append(float(valor))
                 if var=="height":
@@ -25,7 +47,9 @@ def read_file(filename_data):
                 if var=="inductance":
                     array = [float(val) for val in valor.split(',')]
                     inductance.append(array)
-            if var=="PLASMA_ITER":
+            if PI:
+                if var=='shape':
+                    shape = valor
                 if var=="current":
                     current_p=float(valor)
                 if var=="minor_radius":
@@ -47,7 +71,7 @@ def read_file(filename_data):
                 if var=="inductance":
                     array = [float(val) for val in valor.split(',')]
                     inductance.append(array)
-            if var=="CENTRAL_SOLENOID_ITER":
+            if CS:
                 if var=="height":
                     height_cs=float(valor)
                 if var=="diameter":
@@ -64,13 +88,22 @@ def read_file(filename_data):
         f.close()
     
     coils = mf.Tokamak_coils(mf.Toroid(N,I),len(radius),radius,height,current)
-    return coils
+    plasma = Plasma(0,0,current_p,shape,1)
+    A = plasma.get_surface()
+    dx2 = surface_p/A
+    plasma.set_dx(np.sqrt(dx2))
+    return coils, plasma
 
 class Tokamak:
     def __init__(self,filename_data,*args):
-        self.__MagnticSources = read_file(filename_data)
+        self.__MagnticSources, self.__plasma = read_file(filename_data)
         
     def plasma_simulation(self,t0,tf,h):
         while t0 <= tf:
             '''Simulation loop'''
+            xs,zs = self.__plasma.get_pos()
+            B = self.__MagnticSources.get_B(xs,zs)
+            self.__plasma.apply_Force(B,h)
+            sys.stdout.write(f'\rt: {np.round(t0,2)} POS: {self.__plasma.get_center()}')
+            sys.stdout.flush()
             t0 += h

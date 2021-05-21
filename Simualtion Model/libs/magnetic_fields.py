@@ -13,7 +13,7 @@ class Toroid:
         self.__I = I
         self.B = [0,U0*self.__N*I,0]
 
-class tokamak_coils():
+class Tokamak_coils():
     '''
     Group of all coils of the tokamak.
     '''

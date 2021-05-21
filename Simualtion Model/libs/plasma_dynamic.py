@@ -4,10 +4,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 e = 1.60217662e-19
+Mh = 1.6735575e-27
 n = 1e24
 
 
-def loretntz_force(r,B,M,I):
+def loretntz_force(r,B,M,Q):
     '''Calculates Lorentz Force. Receives:
             - r = p,v
             - p = [x,y,z]
@@ -17,7 +18,7 @@ def loretntz_force(r,B,M,I):
     '''
     p,v = r
     dr = v
-    dv = I*np.cross(v,B)/M
+    dv = Q*np.cross(v,B)/M
     return np.array([dr,dv],float)
 
 def Runge_Kutta(f,r0,h,*args):
@@ -41,6 +42,9 @@ class Shape:
     
     def get_shape(self):
         return self.__shape
+    
+    def set_dx(self,dx):
+        self.__dx = dx
 
     def get_surface(self):
         return np.sum(self.__shape*self.__dx**2)
@@ -69,13 +73,12 @@ class Shape:
         
 
 class Plasma(Shape):
-    def __init__(self,rho,vx,vz,I,*args):
+    def __init__(self,vx,vz,I,*args):
         super().__init__(*args)
         self.__I = I
         self.__J = I/self.get_surface()
         vy = self.__J/(n*e)
         self.__v = [vx,vy,vz]
-        self.__rho = rho
     
     def apply_Force(self,B,h):
         '''Temos a equacao diferencial mx'' = (I x B)'''
@@ -86,13 +89,15 @@ class Plasma(Shape):
         #    rho is the mass density
         #    v as [vx,vy,vz] with the plasma velocities 
         #    r as [x,y,z] with the plasma mass center localization
-        M = self.__rho*self.get_surface()
+        M = n*Mh*self.get_surface()
+        Q = n*e*self.get_surface()
         i,j  = self.get_center(vector=False)
         Br = B[i,j]
         x,z = self.get_center()
         r = [[x,0,z],self.__v]
-        deltaV,deltaR = Runge_Kutta(loretntz_force,r,h,Br,M,self.__I)
+        deltaV,deltaR = Runge_Kutta(loretntz_force,r,h,Br,M,Q)
         #update plasma velocity
-        self.__v += deltaV
+        self.__v[0] += deltaV[0]
+        self.__v[-1] += deltaV[-1]
         #update plasma mass center position
         self.set_center(deltaR)
