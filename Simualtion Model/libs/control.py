@@ -40,13 +40,13 @@ class StateSpace:
             T: time vector of nT points
         '''
         t, y, I = signal.lsim(self.__sys,U,T)
-        return y,I
+        return t,y,I
 
 class PID:
-    def __init__(self,Kp,Ki,Kd,Ces):
+    def __init__(self,Kp,ti,td,Ces):
         self.__Kp = Kp
-        self.__Ki = Ki
-        self.__kd = Kd
+        self.__Ki = Kp/ti
+        self.__kd = Kp*td
         self.__Ces = Ces
     def response(self,error,dt):
         D = Df_Dx3(error,dt)
