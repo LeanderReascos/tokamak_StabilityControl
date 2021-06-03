@@ -32,7 +32,7 @@ current:-6.03
 resistance:1.990
 inductance:6.571,4.027,7.124,9.339,28.414,11.415
 PLASMA_ITER:
-shape:D.jpg
+shape:Plasma.jpg
 current:15
 minor_radius:2.0
 major_radius:6.2

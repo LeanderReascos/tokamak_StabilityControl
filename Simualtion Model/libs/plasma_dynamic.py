@@ -1,11 +1,12 @@
+from numpy.core.fromnumeric import shape
 import magnetic_fields as mg
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 import numpy as np
 
 e = 1.60217662e-19
-Mh = 1.6735575e-27
-n = 1e24
+Mh = 3.3435837724e-27
+n = 1e19
 
 
 def loretntz_force(r,B,M,Q):
@@ -66,8 +67,12 @@ class Shape:
         return i,j
     
     def set_center(self, delta_r):
+        #print(f'\nDR: {delta_r}')
         delta_r /= self.__dx 
         dx,_,dz = [int(x) for x in delta_r]
+        i,j = self.get_center(vector=False)
+        if np.any(i+dx < 0 or i+dx>=len(self.__shape) or j+dz>=len(self.__shape) or j+dz < 0): 
+            print(f' RICARDO MERDA: {dx+i} {dz+j}')
         self.__shape = np.roll(self.__shape,dx,axis=1)
         self.__shape = np.roll(self.__shape,dz,axis=0)
         
@@ -80,6 +85,12 @@ class Plasma(Shape):
         vy = self.__J/(n*e)
         self.__v = [vx,vy,vz]
     
+    def change_current(self,I):
+        self.__I = I
+        self.__J = I/self.get_surface()
+        vy = self.__J/(n*e)
+        self.__v[1] = vy
+
     def apply_Force(self,B,h):
         '''Temos a equacao diferencial mx'' = (I x B)'''
         #calculate the new center position
@@ -95,7 +106,8 @@ class Plasma(Shape):
         Br = B[i,j]
         x,z = self.get_center()
         r = [[x,0,z],self.__v]
-        deltaV,deltaR = Runge_Kutta(loretntz_force,r,h,Br,M,Q)
+        deltaR,deltaV = loretntz_force(r,Br,M,Q)*h#Runge_Kutta(loretntz_force,r,h,Br,M,Q)
+        #print(f'\nB: {Br}, DR:{deltaR}')
         #update plasma velocity
         self.__v[0] += deltaV[0]
         self.__v[-1] += deltaV[-1]

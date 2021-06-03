@@ -1,5 +1,8 @@
+from os import error
+
+from numpy.core.fromnumeric import shape
 from plasma_dynamic import Plasma
-from control import StateSpace
+from control import StateSpace, PID
 import magnetic_fields as  mf
 import numpy as np
 import matplotlib.pyplot as plt
@@ -104,28 +107,67 @@ def read_file(filename_data):
     D[:-1] = np.zeros((1,number_circuits))
     D[-1,:] = np.zeros(number_circuits)
 
-    SS = StateSpace(A,B,C,D)
+    SS = StateSpace(A,B,C,D,np.array(current)*1e6)
 
-    coils = mf.Tokamak_coils(mf.Toroid(N,I),len(radius),radius,height,current)
-    plasma = Plasma(0,0,current_p,shape,1)
+
+    Voltages = np.array(resistance)*1e-3*np.array(current)*1e6
+
+    coils = mf.Tokamak_coils(mf.Toroid(N,I),len(radius),np.array(radius)*1e3,np.array(height)*1e3,np.array(current)*1e6)
+    plasma = Plasma(0,0,current_p*1e6,shape,1)
     A = plasma.get_surface()
+    surface_p = volume_p/(np.pi*(np.max(radius)+np.min(radius)))
     dx2 = surface_p/A
     plasma.set_dx(np.sqrt(dx2))
-    return coils, plasma, SS
+    return coils, plasma, SS, Voltages
 
 class Tokamak:
     def __init__(self,filename_data,*args):
-        self.__MagnticSources, self.__plasma, self.__SS = read_file(filename_data)
+        self.__MagnticSources, self.__plasma, self.__SS, self.__Voltages = read_file(filename_data)
+        self.__PosReference = np.array([4.825,0])
+        Kps = np.load('Kps.npy')
+        self.__PID = PID(Kps/Kps,0,0,0)
+        self.__R = []
 
     def get_SpaceState(self):
         return self.__SS
 
-    def plasma_simulation(self,t0,tf,h):
+    def get_MS(self):
+        return self.__MagnticSources
+
+    def get_plasma(self):
+        return self.__plasma
+    
+    def get_R(self):
+        return self.__R
+
+    def plasma_simulation(self,t0,tf,h,Aberta=False):
+        error = 0
         while t0 <= tf:
             '''Simulation loop'''
-            xs,zs = self.__plasma.get_pos()
-            B = self.__MagnticSources.get_B(xs,zs)
-            self.__plasma.apply_Force(B,h)
-            sys.stdout.write(f'\rt: {np.round(t0,2)} POS: {self.__plasma.get_center()}')
+            self.__R.append(self.__plasma.get_center())
+            sys.stdout.write(f'\rt: {np.round(t0,6)} POS: {self.__plasma.get_center()}, Error: {np.sum(error)}')
             sys.stdout.flush()
+            xs,zs = self.__plasma.get_pos()
+            B = self.__MagnticSources.get_B(xs*1e3,zs*1e3)
+            self.__plasma.apply_Force(B,h)
+            
+            #Eror caculation
+            x,z = self.__plasma.get_center()
+            r = np.array([x,z])
+            error = self.__PosReference - r
+            error = np.sqrt(np.sum(error**2))
+            if not Aberta:
+                #PID
+                U = self.__PID.response(np.sum(error),h)
+                #Space State
+                _,Is,_ = self.__SS.sys_response(U,t0)
+                self.Is = Is
+                try:
+                    Is.shape[1]
+                    Is = Is[-1]
+                except:
+                    pass
+                self.__MagnticSources.change_currents(Is[:-1])
+                self.__plasma.change_current(Is[-1])
+            
             t0 += h
