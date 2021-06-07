@@ -25,6 +25,8 @@ def read_file(filename_data):
                 valor,_ = valor.split('\n')
             except:
                 var = line.split('\n')[:-1]
+            if var=='Reference':
+                reference = float(valor)
             if var=='Toroid':
                 N,I = [float(val) for val in valor.split(',')]
             if var=="PF":
@@ -108,12 +110,6 @@ def read_file(filename_data):
     D[-1,:] = np.zeros(number_circuits)
 
     SS = StateSpace(A,B,C,D,np.array(current)*1e6)
-
-    xRef = 4
-    xRefs = []
-    for r in radius:
-        xRefs.append(xRef-r)
-    print(xRefs,radius)
     Voltages = np.array(resistance)*1e-3*np.array(current)*1e6
 
     coils = mf.Tokamak_coils(mf.Toroid(N,I),len(radius),np.array(radius)*1e3,np.array(height)*1e3,np.zeros(5))#np.array(current)*1e6)
@@ -122,20 +118,17 @@ def read_file(filename_data):
     surface_p = volume_p/(np.pi*(np.max(radius)+np.min(radius)))
     dx2 = surface_p/A
     plasma.set_dx(np.sqrt(dx2))
+    print(f'Surfacep: {surface_p}, SurfaceP: {plasma.get_surface()}')
     plasma.change_current(current_p*1e6)
-    print(current_p*1e6/plasma.get_surface()/1e19/1.60217662e-19)
     plasma.get_center()
-    return coils, plasma, SS, Voltages, xRefs, radius
+    return coils, plasma, SS, Voltages, reference
 
 class Tokamak:
     def __init__(self,filename_data,*args):
-        self.__MagnticSources, self.__plasma, self.__SS, self.__Voltages, self.__xRefs,self.__Rs = read_file(filename_data)
-        print(self.__Rs)
+        self.__MagnticSources, self.__plasma, self.__SS, self.__Voltages,self.__Reference = read_file(filename_data)
         Kps = np.load('Kps.npy')
-        Kis = np.load('Kis.npy')
-        Kds = np.load('Kds.npy')
-        self.__PID = PID(Kps*0.3,Kps*0.8,Kps*0.146,0,1e6,-1e6)
-        print(f'KPS: {Kps,Kis,Kds}')
+        self.__PID = PID(Kps*0.4,Kps*0.24,Kps*0.2,0)
+        print(f'KPS: {Kps*0.1,Kps*0.8,Kps*0.16}')
         self.__R = []
         self.E = []
         self.B = []
@@ -158,18 +151,17 @@ class Tokamak:
             '''Simulation loop'''
             R,_ = self.__plasma.get_position()
             self.__R.append(np.copy(R))
-            sys.stdout.write(f'\rt: {np.round(t0,6)} POS: {R} Erro: {error}')#'  Velocidade: {self.__plasma.V[-1]}')
+            sys.stdout.write(f'\rt: {np.round(t0,6)} POS: {R} Erro: {error}')
             sys.stdout.flush()
             xs,zs = self.__plasma.get_pos()
             B = self.__MagnticSources.get_B(self.__plasma.ms, xs*1e3,zs*1e3)
             self.B.append(B)
             self.__plasma.apply_Force(B,h)
             #Eror caculation
-            [x,z],_ = self.__plasma.get_position()#self.__plasma.get_center()
+            [x,z],_ = self.__plasma.get_position()
             r = np.array([x,z])
-            error = (np.full(5,4) - r[0])
+            error = self.__Reference - r[0]
             self.E.append(error)
-
             if not Aberta:
                 #PID
                 U = self.__PID.response(error,h)
@@ -183,5 +175,4 @@ class Tokamak:
                     pass
                 self.__MagnticSources.change_currents(Is[:-1]*np.array([-1,-1,-1,1,1]))
                 self.__plasma.change_current(-np.abs(Is[-1]))
-            
             t0 += h

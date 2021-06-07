@@ -1,3 +1,4 @@
+Reference:4.95
 Toroid:18,68e3
 CENTRAL_COILS:
 PF:

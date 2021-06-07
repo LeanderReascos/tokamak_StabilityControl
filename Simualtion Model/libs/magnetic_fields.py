@@ -37,7 +37,6 @@ class Tokamak_coils():
 
     def get_B(self,plasma,xs,zs):
         POS = np.array([(x,0,z) for z in zs for x in xs])
-        #print(self.__coils)
         B = magpy.Collection(self.__coils+[plasma]).getB(POS).reshape(len(zs),len(xs),3)+np.full((len(zs),len(xs),3),self.__Toroid.B)
         return B*1e-3
 

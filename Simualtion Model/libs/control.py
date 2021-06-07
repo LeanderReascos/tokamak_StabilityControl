@@ -31,11 +31,11 @@ class StateSpace:
         '''
         self.__Ts.append(T)
         self.__Us.append(U)
-        t, y, I = signal.lsim(self.__sys,self.__Us,self.__Ts)#,X0=self.__X0)
+        t, y, I = signal.lsim(self.__sys,self.__Us,self.__Ts)
         return t,y,I
 
 class PID:
-    def __init__(self,Kp,Ki,Kd,Ces,max,min):
+    def __init__(self,Kp,Ki,Kd,Ces):
         self.__Kp = Kp
         self.__Ki = Ki
         self.__Kd = Kd

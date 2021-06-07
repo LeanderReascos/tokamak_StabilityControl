@@ -23,19 +23,6 @@ def loretntz_force(r,B,M,Q):
     dv = Q*np.cross(v,B)/M
     return np.array([dr,dv],float)
 
-def Runge_Kutta(f,r0,h,*args):
-    '''4th order Runge Kutta. Recives:
-            - r0 = [(x,y,z),(vx,vy,vz)]
-            - h: temporal step
-        Return: [dp,dv]
-    '''
-    r = np.array(r0)
-    k0 = h*f(r,*args)
-    k1 = h*f(r+k0/2,*args)
-    k2 = h*f(r+k1/2,*args)
-    k3 = h*f(r+k2,*args)
-    return 1/6*(k0+2*k1+2*k2+k3)
-
 
 class Shape:
     def __init__(self,filename,dx):
@@ -73,24 +60,11 @@ class Shape:
         return self.__R,self.__Pos
 
     def set_center(self, delta_r):
-        #print(f'\nDR: {delta_r}')
         delta_r = np.array([delta_r[0],delta_r[-1]])
         self.__R += delta_r
         i,j = self.__R/self.__dx
-        #print(int(i),int(j)+int(len(self.__shape)/2))
         self.__Pos = np.array([int(i),int(j)+int(len(self.__shape)/2)])
-        '''
-        delta_r /= self.__dx 
-        dx,_,dz = [int(x) for x in delta_r]
-        _,[i,j] =self.get_position() #self.get_center(vector=False)
-        if np.any(i+dx < 0 or i+dx>=len(self.__shape) or j+dz>=len(self.__shape) or j+dz < 0): 
-            print(f' RICARDO MERDA: {dx+i} {dz+j}')
-        self.__Pos += np.array([dx,dz])
-        i,j = self.__Pos
-        x,y = self.get_pos()
-        '''
-        #self.__shape = np.roll(self.__shape,dx,axis=1)
-        #self.__shape = np.roll(self.__shape,dz,axis=0)
+
         
 
 class Plasma(Shape):
@@ -108,7 +82,6 @@ class Plasma(Shape):
         self.__J = I/self.get_surface()
         vy = self.__J/(n*e)
         self.__v[1] = vy
-        #print(vy)
 
     def apply_Force(self,B,h):
         '''Temos a equacao diferencial mx'' = (I x B)'''
@@ -121,20 +94,13 @@ class Plasma(Shape):
         #    r as [x,y,z] with the plasma mass center localization
         M = n*Mh*self.get_surface()
         Q = n*e*self.get_surface()
-        [x,z],[i,j]  = self.get_position()#self.get_center(vector=False)
-        Br = B[i,j]#np.mean(np.mean(B[i-1:i+1,j-1:j+1],axis=1),axis=0)
-
+        [x,z],[i,j]  = self.get_position()
+        Br = B[i,j]
         Br[1] = 0
-        #print(f'\nB: {len(self.B)}')
         self.B.append(Br)
         self.V.append(np.copy(self.__v))
-        #x,z = #self.get_center()
         r = [[x,0,z],self.__v]
-        #print('\n',r)
-        deltaR,deltaV = loretntz_force(r,Br,M,Q)*h#Runge_Kutta(loretntz_force,r,h,Br,M,Q)
-        #print(f'\nv: {self.__v}   I: {self.__I} Dv: {deltaV}')
-        #print(f'\nB: {Br}, DR:{deltaR}')
-        #update plasma velocity
+        deltaR,deltaV = loretntz_force(r,Br,M,Q)*h
         self.__v[0] += deltaV[0]
         self.__v[-1] += deltaV[-1]
         #update plasma mass center position
